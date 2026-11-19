@@ -1,4 +1,7 @@
 /build/
+/dist/
 /pkgbuild/pkg/
 /pkgbuild/src/
 *.pkg.tar.*
+*.tar.gz
+!dist/.gitkeep

@@ -1,0 +1,63 @@
+#!/bin/sh
+# Build a distributable tarball with binary, license, README, desktop entry, icon.
+set -eu
+
+ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
+VERSION="${BORIS_VERSION:-0.1.0}"
+ARCH="$(uname -m)"
+NAME="boris-${VERSION}-linux-${ARCH}"
+STAGE="$ROOT/dist/$NAME"
+ARCHIVE="$ROOT/dist/${NAME}.tar.gz"
+
+"$ROOT/bin/build"
+
+rm -rf "$STAGE"
+mkdir -p "$STAGE"
+
+install -Dm755 "$ROOT/build/boris" "$STAGE/boris"
+install -Dm644 "$ROOT/LICENSE" "$STAGE/LICENSE"
+install -Dm644 "$ROOT/README.md" "$STAGE/README.md"
+install -Dm644 "$ROOT/pkgbuild/boris.desktop" "$STAGE/boris.desktop"
+install -Dm644 "$ROOT/pkgbuild/boris.svg" "$STAGE/boris.svg"
+
+cat > "$STAGE/install-user.sh" <<'EOF'
+#!/bin/sh
+# Install Boris for the current user (~/.local). Includes binary, desktop entry, parrot icon.
+set -eu
+HERE="$(CDPATH= cd -- "$(dirname -- "$0")" && pwd)"
+PREFIX="${PREFIX:-$HOME/.local}"
+
+install -Dm755 "$HERE/boris" "$PREFIX/bin/boris"
+install -Dm644 "$HERE/boris.desktop" "$PREFIX/share/applications/boris.desktop"
+install -Dm644 "$HERE/boris.svg" "$PREFIX/share/icons/hicolor/scalable/apps/boris.svg"
+install -Dm644 "$HERE/LICENSE" "$PREFIX/share/licenses/boris/LICENSE"
+install -Dm644 "$HERE/README.md" "$PREFIX/share/doc/boris/README.md"
+
+# Point desktop entry at the installed binary when not on PATH yet.
+if command -v desktop-file-edit >/dev/null 2>&1; then
+  desktop-file-edit --set-key=Exec --set-value="$PREFIX/bin/boris" \
+    "$PREFIX/share/applications/boris.desktop" || true
+fi
+
+echo "Installed Boris to $PREFIX"
+echo "Launch: $PREFIX/bin/boris   or from the app menu (icon: parrot, not a cursor)."
+EOF
+chmod 755 "$STAGE/install-user.sh"
+
+# Manifest so deploy packages are self-describing.
+cat > "$STAGE/MANIFEST.txt" <<EOF
+name=boris
+version=${VERSION}
+arch=${ARCH}
+license=MIT
+icon=boris.svg
+icon_kind=parrot
+includes=boris,LICENSE,README.md,boris.desktop,boris.svg,install-user.sh,MANIFEST.txt
+EOF
+
+mkdir -p "$ROOT/dist"
+tar -C "$ROOT/dist" -czf "$ARCHIVE" "$NAME"
+rm -rf "$STAGE"
+
+echo "Packed $ARCHIVE"
+ls -lh "$ARCHIVE"
