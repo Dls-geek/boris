@@ -1,0 +1,11 @@
+[Desktop Entry]
+Type=Application
+Name=Boris
+Comment=A parrot that walks on the desktop
+Comment[da]=En papegøje, der går på skrivebordet
+Exec=boris
+Icon=boris
+Terminal=false
+Categories=Amusement;
+StartupWMClass=boris
+StartupNotify=false

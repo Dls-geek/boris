@@ -1,0 +1,23 @@
+pkgname=boris
+pkgver=0.1.0
+pkgrel=1
+pkgdesc='A parrot that walks on the desktop'
+arch=('x86_64' 'aarch64')
+license=('MIT')
+depends=('qt6-base' 'qt6-declarative' 'qt6-wayland' 'qt6-svg' 'qt6-imageformats' 'layer-shell-qt' 'xdg-desktop-portal')
+makedepends=('gcc' 'make' 'qt6-base' 'qt6-declarative' 'layer-shell-qt')
+source=()
+sha256sums=()
+
+build() {
+  cd "$startdir/.."
+  ./bin/build
+}
+
+package() {
+  cd "$startdir/.."
+  install -Dm755 build/boris "$pkgdir/usr/bin/boris"
+  install -Dm644 LICENSE "$pkgdir/usr/share/licenses/$pkgname/LICENSE"
+  install -Dm644 "$startdir/boris.svg" "$pkgdir/usr/share/icons/hicolor/scalable/apps/boris.svg"
+  install -Dm644 "$startdir/boris.desktop" "$pkgdir/usr/share/applications/boris.desktop"
+}
