@@ -44,9 +44,10 @@ Glance / layer-shell companion habits follow [Nala](https://github.com/yappologi
 ## Requirements
 
 - Linux with Wayland (Hyprland / Omarchy)
-- Qt 6 (base, declarative/QML, Wayland, SVG, imageformats)
+- Qt 6 (base, declarative/QML, Wayland, SVG, imageformats, multimedia)
 - Layer Shell Qt
 - xdg-desktop-portal (file picker)
+- Microphone access (optional, for Alive wake-word)
 
 ## Build
 

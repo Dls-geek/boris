@@ -29,6 +29,8 @@ jobs:
             qml6-module-qtqml-workerscript \
             layer-shell-qt \
             liblayershellqtinterface-dev \
+            qt6-multimedia-dev \
+            libqt6multimedia6 \
             pkg-config
 
       - name: Build
@@ -44,7 +46,7 @@ jobs:
         run: |
           BORIS_VERSION="${GITHUB_REF_NAME#v}"
           case "$BORIS_VERSION" in
-            main|*-*) BORIS_VERSION=0.1.0 ;;
+            main|*-*) BORIS_VERSION=0.2.0 ;;
           esac
           export BORIS_VERSION
           bin/package

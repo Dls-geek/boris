@@ -88,7 +88,7 @@ int main(int argc, char *argv[])
 
     QGuiApplication app(argc, argv);
     app.setApplicationName(QStringLiteral("boris"));
-    app.setApplicationVersion(QStringLiteral("0.1.0"));
+    app.setApplicationVersion(QStringLiteral("0.2.0"));
     app.setDesktopFileName(QStringLiteral("boris"));
     app.setWindowIcon(QIcon::fromTheme(QStringLiteral("boris")));
     QQuickStyle::setStyle(QStringLiteral("Material"));

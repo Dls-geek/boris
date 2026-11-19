@@ -3,7 +3,7 @@
 set -eu
 
 ROOT="$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)"
-VERSION="${BORIS_VERSION:-0.1.0}"
+VERSION="${BORIS_VERSION:-0.2.0}"
 ARCH="$(uname -m)"
 NAME="boris-${VERSION}-linux-${ARCH}"
 STAGE="$ROOT/dist/$NAME"
