@@ -20,6 +20,7 @@ He stays out of the way: the pet window is only as big as he is, so the rest of 
 - **Still images** — PNG, JPEG, WebP, SVG
 - **Frames folders** — `idle.png` plus optional walk/talk frames
 - **Attention** — glance at the pointer, idle antics, nap when left alone
+- **Alive Companion** — hop vs talk/excited, optional chirps, short pirate lines, local mic wake-word (say his name / configurable phrase)
 - **Omarchy theme** — accent and rounding follow the desktop where possible
 - **Danish / English** strings via `src/i18n/`
 
@@ -57,7 +58,7 @@ bin/build
 ```
 
 ```sh
-bin/test          # offscreen unit tests (29)
+bin/test          # offscreen unit tests
 bin/package       # release tarball under dist/
 bin/install       # Arch package via makepkg (needs makepkg)
 ```
@@ -67,6 +68,29 @@ Preview without a display:
 ```sh
 ./build/boris --preview screenshot.png
 ```
+
+## Alive Companion
+
+Alive Companion (v0.2.0) adds hop vs talk/excited moods, optional chirps, short pirate lines, and local mic wake-word (default phrase `boris`, no cloud / no push-to-talk). Enable wake listening in settings, or type a line containing the wake phrase via `submitWakeLine`. Optional reply API keys stay out of the offscreen suite — unit tests never need network or credentials.
+
+### Test plan
+
+Automated (`QT_QPA_PLATFORM=offscreen bin/test`):
+
+- [ ] Hop mood lifts; talk mood does not share the hop lift
+- [ ] Click / Space hops (`mood == hop`), not a shared `react`
+- [ ] `Config` persists `chirpsEnabled` and `wakePhrase` (default `boris`)
+- [ ] `WakeWord::submitTranscript`: `"hey boris"` matches, `"hello"` does not (no mic)
+- [ ] `Personality::pickLocalLine()` returns a non-empty local line
+- [ ] `Backend::submitWakeLine` ignores non-matches; wake hit sets listening (no API key / no mic)
+
+Manual (desktop):
+
+- [ ] Click → hop animation; talk / speech UI does not reuse hop
+- [ ] Chirps toggle in settings persists across relaunch
+- [ ] Wake phrase setting saves; change it and confirm the new phrase is remembered
+- [ ] Wake-word mic (manual): say the wake phrase near a working mic and confirm he reacts; say an unrelated word and confirm he stays quiet (not covered in offscreen CI)
+- [ ] With no reply API key, speech still shows a local pirate line
 
 ## Install (Arch / Omarchy)
 

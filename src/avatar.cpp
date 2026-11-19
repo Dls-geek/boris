@@ -75,7 +75,11 @@ QUrl Avatar::source() const
         relative = m_file;
     else if (m_kind == QLatin1String("frames")) {
         relative = m_idle;
-        if (m_pose == QLatin1String("react") && !m_talk.isEmpty())
+        // talk / excited use the talk frame; hop stays on idle.
+        // "react" kept as a legacy alias for older tests / callers.
+        if ((m_pose == QLatin1String("talk") || m_pose == QLatin1String("excited")
+             || m_pose == QLatin1String("react"))
+            && !m_talk.isEmpty())
             relative = m_talk;
         else if (m_pose == QLatin1String("walk"))
             relative = (m_frame == 0 ? m_walkA : m_walkB);

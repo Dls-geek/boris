@@ -95,6 +95,7 @@ void Pet::place(int x, int y)
     m_pointerDown = false;
     m_dragging = false;
     m_reactLeft = 0;
+    m_talkLeft = 0;
     clamp();
     m_goal = 5000;
     setMood(m_y > floorReach() ? QStringLiteral("sit") : QStringLiteral("idle"));
@@ -135,8 +136,9 @@ void Pet::setMood(const QString &mood)
 
 bool Pet::canRoam() const
 {
-    return !m_pointerDown && !napping() && m_mood != QLatin1String("preen")
-           && m_y <= floorReach() && m_mood != QLatin1String("drag");
+    return !m_pointerDown && !m_listening && !napping() && m_mood != QLatin1String("preen")
+           && m_mood != QLatin1String("talk") && m_mood != QLatin1String("excited")
+           && m_mood != QLatin1String("hop") && m_y <= floorReach() && m_mood != QLatin1String("drag");
 }
 
 void Pet::setAttention(bool followCursor, bool idleAntics, bool sleepWhenIdle)
@@ -200,8 +202,10 @@ void Pet::tick(int ms)
         ms = 0;
 
     bool dirty = false;
-    if (m_mood == QLatin1String("react"))
-        dirty = advanceReact(ms);
+    if (m_mood == QLatin1String("hop") || m_mood == QLatin1String("excited"))
+        dirty = advanceHop(ms);
+    else if (m_mood == QLatin1String("talk"))
+        dirty = advanceTalk(ms);
     else if (m_mood == QLatin1String("preen")) {
         m_preenLeft -= ms;
         if (m_preenLeft <= 0) {
@@ -213,13 +217,14 @@ void Pet::tick(int ms)
     } else if (canRoam())
         dirty = advanceRoam(ms);
 
-    if (!m_pointerDown && m_mood != QLatin1String("react") && m_mood != QLatin1String("drag")
-        && m_mood != QLatin1String("preen"))
+    if (!m_pointerDown && !m_listening && m_mood != QLatin1String("hop") && m_mood != QLatin1String("excited")
+        && m_mood != QLatin1String("talk") && m_mood != QLatin1String("drag") && m_mood != QLatin1String("preen"))
         dirty = advanceAttention(ms) || dirty;
 
     if (m_mood == QLatin1String("walk"))
         dirty = advanceFrame(ms) || dirty;
-    else if (m_frame != 0 && m_mood != QLatin1String("preen")) {
+    else if (m_frame != 0 && m_mood != QLatin1String("preen") && m_mood != QLatin1String("talk")
+             && m_mood != QLatin1String("excited")) {
         m_frame = 0;
         m_frameMs = 0;
         dirty = true;
@@ -231,7 +236,8 @@ void Pet::tick(int ms)
 
 bool Pet::advanceAttention(int ms)
 {
-    if (m_pointerDown || m_mood == QLatin1String("drag") || m_mood == QLatin1String("react"))
+    if (m_pointerDown || m_listening || m_mood == QLatin1String("drag") || m_mood == QLatin1String("hop")
+        || m_mood == QLatin1String("excited") || m_mood == QLatin1String("talk"))
         return false;
 
     m_idleMs += ms;
@@ -247,19 +253,11 @@ bool Pet::advanceAttention(int ms)
     return true;
 }
 
-bool Pet::advanceReact(int ms)
+void Pet::finishAction()
 {
-    m_reactLeft -= ms;
-    const int elapsed = ReactMs - std::max(0, m_reactLeft);
-    const double t = std::clamp(elapsed / double(ReactMs), 0.0, 1.0);
-    const int hop = int(std::lround(std::sin(t * kPi) * hopHeight()));
-    const bool moved = hop != m_lift;
-    m_lift = hop;
-    if (m_reactLeft > 0)
-        return moved;
-
     m_lift = 0;
     m_reactLeft = 0;
+    m_talkLeft = 0;
     if (m_y > floorReach())
         setMood(QStringLiteral("sit"));
     else if (m_walking)
@@ -268,6 +266,35 @@ bool Pet::advanceReact(int ms)
         m_goal = 600;
         setMood(QStringLiteral("idle"));
     }
+}
+
+bool Pet::advanceHop(int ms)
+{
+    m_reactLeft -= ms;
+    const int elapsed = ReactMs - std::max(0, m_reactLeft);
+    const double t = std::clamp(elapsed / double(ReactMs), 0.0, 1.0);
+    // Full hop for click/poke; excited only gets a small bounce.
+    const int peak = m_mood == QLatin1String("excited") ? std::max(6, hopHeight() / 2) : hopHeight();
+    const int lift = int(std::lround(std::sin(t * kPi) * peak));
+    const bool moved = lift != m_lift;
+    m_lift = lift;
+    if (m_mood == QLatin1String("excited"))
+        m_frame = (elapsed / 80) % 2;
+    if (m_reactLeft > 0)
+        return moved || m_mood == QLatin1String("excited");
+
+    finishAction();
+    return true;
+}
+
+bool Pet::advanceTalk(int ms)
+{
+    m_talkLeft -= ms;
+    m_frame = (m_talkLeft / 100) % 2;
+    m_lift = 0;
+    if (m_talkLeft > 0)
+        return true;
+    finishAction();
     return true;
 }
 
@@ -351,7 +378,7 @@ void Pet::chooseNextAct()
     }
     if (m_idleAntics && roll == 2) {
         m_walking = false;
-        poke();
+        hop();
         return;
     }
 
@@ -412,7 +439,7 @@ void Pet::release()
         return;
     m_pointerDown = false;
     if (!m_dragging) {
-        poke();
+        hop();
         return;
     }
 
@@ -430,19 +457,81 @@ void Pet::release()
     emit changed();
 }
 
-void Pet::poke()
+void Pet::hop()
 {
-    if (m_pointerDown)
+    if (m_pointerDown || m_listening)
         return;
     wakeFromNap();
     m_idleMs = 0;
     m_frame = 0;
+    m_talkLeft = 0;
     m_reactLeft = ReactMs;
     m_lift = 0;
-    if (m_mood != QLatin1String("react"))
-        setMood(QStringLiteral("react"));
-    else
-        emit changed();
+    setMood(QStringLiteral("hop"));
+    emit hopped();
+    emit changed();
+}
+
+void Pet::talk()
+{
+    if (m_pointerDown)
+        return;
+    wakeFromNap();
+    m_listening = false;
+    m_idleMs = 0;
+    m_walking = false;
+    m_lift = 0;
+    m_reactLeft = 0;
+    m_talkLeft = TalkMs;
+    m_frame = 0;
+    setMood(QStringLiteral("talk"));
+    emit talked();
+    emit changed();
+}
+
+void Pet::excite()
+{
+    if (m_pointerDown)
+        return;
+    wakeFromNap();
+    m_listening = false;
+    m_idleMs = 0;
+    m_walking = false;
+    m_talkLeft = 0;
+    m_frame = 0;
+    m_reactLeft = ReactMs;
+    m_lift = 0;
+    setMood(QStringLiteral("excited"));
+    emit excited();
+    emit changed();
+}
+
+void Pet::poke()
+{
+    hop();
+}
+
+void Pet::beginListen()
+{
+    if (m_pointerDown)
+        return;
+    wakeFromNap();
+    m_listening = true;
+    m_idleMs = 0;
+    m_walking = false;
+    m_lift = 0;
+    m_reactLeft = 0;
+    m_talkLeft = 0;
+    setMood(QStringLiteral("sit"));
+    emit changed();
+}
+
+void Pet::endListen()
+{
+    if (!m_listening)
+        return;
+    m_listening = false;
+    emit changed();
 }
 
 void Pet::walkTheFloor()
@@ -451,8 +540,10 @@ void Pet::walkTheFloor()
     m_lift = 0;
     m_pointerDown = false;
     m_dragging = false;
+    m_listening = false;
     m_walking = false;
     m_reactLeft = 0;
+    m_talkLeft = 0;
     m_preenLeft = 0;
     m_idleMs = 0;
     m_goal = 200;

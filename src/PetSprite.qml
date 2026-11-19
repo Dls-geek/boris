@@ -22,7 +22,10 @@ Item {
         Rotation {
             origin.x: bird.width / 2
             origin.y: bird.height - 8
-            angle: bird.mood === "drag" ? -8 : (bird.mood === "preen" ? 6 : 0)
+            angle: bird.mood === "drag" ? -8
+                 : (bird.mood === "preen" ? 6
+                 : (bird.mood === "hop" ? -4
+                 : (bird.mood === "excited" ? 3 : 0)))
         }
     ]
 
@@ -50,21 +53,21 @@ Item {
 
     Rectangle {
         x: 12
-        y: 86 + bird.sink
+        y: (bird.mood === "hop" || bird.mood === "excited" ? 78 : 86) + bird.sink
         width: 42
         height: 16
         radius: 8
-        rotation: -26
+        rotation: bird.mood === "hop" || bird.mood === "excited" ? -38 : -26
         antialiasing: true
         color: "#146b44"
     }
     Rectangle {
         x: 18
-        y: 100 + bird.sink
+        y: (bird.mood === "hop" || bird.mood === "excited" ? 94 : 100) + bird.sink
         width: 36
         height: 13
         radius: 6
-        rotation: -6
+        rotation: bird.mood === "hop" || bird.mood === "excited" ? -14 : -6
         antialiasing: true
         color: "#1d8a56"
     }
@@ -136,7 +139,7 @@ Item {
     }
     Rectangle {
         visible: !bird.eyesShut
-        x: (bird.mood === "react" ? 120 : 118) + Math.round(bird.gazeX * 3)
+        x: ((bird.mood === "talk" || bird.mood === "excited") ? 120 : 118) + Math.round(bird.gazeX * 3)
         y: 52 + bird.sink + Math.round(bird.gazeY * 3)
         width: 7
         height: 7
@@ -146,7 +149,7 @@ Item {
 
     Rectangle {
         x: 128
-        y: (bird.mood === "react" ? 50 : 58) + bird.sink
+        y: ((bird.mood === "talk" || bird.mood === "excited") ? 50 : 58) + bird.sink
         width: 30
         height: 13
         radius: 4
@@ -154,7 +157,7 @@ Item {
         color: "#ef8f32"
     }
     Rectangle {
-        visible: bird.mood === "react"
+        visible: bird.mood === "talk" || bird.mood === "excited"
         x: 132
         y: 66 + bird.sink
         width: 24

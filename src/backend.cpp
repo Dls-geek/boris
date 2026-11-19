@@ -16,19 +16,36 @@
 #include "portalfilepicker.h"
 
 Backend::Backend(const QString &avatarDirectory, FilePicker *picker, const QString &configDirectory, QObject *parent)
-    : QObject(parent), m_avatar(avatarDirectory), m_config(configDirectory),
+    : QObject(parent), m_avatar(avatarDirectory), m_config(configDirectory), m_wakeWord(configDirectory),
       m_picker(picker ? picker : new PortalFilePicker(this))
 {
     if (!m_avatar.error().isEmpty())
         m_message = m_avatar.error();
     m_pet.setScalePercent(m_config.scalePercent());
     applyAttention();
+    applyAlive();
+    m_speechClear.setSingleShot(true);
+    connect(&m_speechClear, &QTimer::timeout, this, [this] { m_personality.clearLine(); emit speechLineChanged(); });
 
     connect(&m_pet, &Pet::changed, this, [this] {
         m_avatar.setPose(m_pet.mood(), m_pet.frame());
         syncWindow();
+        emit listeningChanged();
     });
     connect(&m_pet, &Pet::settingsRequested, this, &Backend::openSettings);
+    connect(&m_pet, &Pet::talked, this, [this] { m_chirps.playTalk(); });
+    connect(&m_pet, &Pet::excited, this, [this] { m_chirps.playExcited(); });
+    connect(&m_personality, &Personality::lastLineChanged, this, [this] {
+        emit speechLineChanged();
+        if (!m_personality.lastLine().isEmpty())
+            m_speechClear.start(4000);
+    });
+    connect(&m_wakeWord, &WakeWord::heard, this, &Backend::onWakeDetected);
+    connect(&m_wakeWord, &WakeWord::statusChanged, this, [this] {
+        emit wakeWordStatusChanged();
+        emit wakeWordActiveChanged();
+    });
+    connect(&m_wakeWord, &WakeWord::enabledChanged, this, &Backend::wakeWordActiveChanged);
     connect(&m_config, &Config::scalePercentChanged, this, [this] {
         m_pet.setScalePercent(m_config.scalePercent());
         emit scalePercentChanged();
@@ -36,6 +53,10 @@ Backend::Backend(const QString &avatarDirectory, FilePicker *picker, const QStri
     connect(&m_config, &Config::attentionChanged, this, [this] {
         applyAttention();
         emit attentionChanged();
+    });
+    connect(&m_config, &Config::aliveChanged, this, [this] {
+        applyAlive();
+        emit aliveChanged();
     });
     connect(&m_cursor, &Cursor::moved, this, [this](QPoint position) {
         const QPoint local = position - screenOrigin();
@@ -128,6 +149,100 @@ void Backend::applyAttention()
 {
     m_pet.setAttention(m_config.followCursor(), m_config.idleAntics(), m_config.sleepWhenIdle());
     m_cursor.setActive(m_config.followCursor());
+}
+
+void Backend::applyAlive()
+{
+    m_chirps.setEnabled(m_config.chirpsEnabled());
+    m_personality.setApiKey(m_config.replyApiKey());
+    m_personality.setApiUrl(m_config.replyApiUrl());
+    m_wakeWord.setPhrase(m_config.wakePhrase());
+    m_wakeWord.setEnabled(m_config.wakeWordEnabled());
+}
+
+void Backend::setChirpsEnabled(bool enabled)
+{
+    m_config.setChirpsEnabled(enabled);
+}
+
+void Backend::setWakeWordEnabled(bool enabled)
+{
+    m_config.setWakeWordEnabled(enabled);
+}
+
+void Backend::setWakePhrase(const QString &phrase)
+{
+    m_config.setWakePhrase(phrase);
+}
+
+void Backend::setReplyApiKey(const QString &key)
+{
+    m_config.setReplyApiKey(key);
+}
+
+void Backend::setReplyApiUrl(const QString &url)
+{
+    m_config.setReplyApiUrl(url);
+}
+
+void Backend::hop()
+{
+    m_pet.hop();
+}
+
+void Backend::talk()
+{
+    m_pet.talk();
+}
+
+void Backend::excite()
+{
+    m_pet.excite();
+}
+
+void Backend::startWakeListening()
+{
+    setWakeWordEnabled(true);
+}
+
+void Backend::stopWakeListening()
+{
+    setWakeWordEnabled(false);
+}
+
+void Backend::submitWakeLine(const QString &text)
+{
+    if (m_wakeWord.submitTranscript(text))
+        return;
+    setMessage(tr("Say his name (%1) to get his attention.").arg(m_config.wakePhrase()));
+}
+
+void Backend::clearSpeech()
+{
+    m_speechClear.stop();
+    m_personality.clearLine();
+    emit speechLineChanged();
+}
+
+void Backend::showSpeech(const QString &line)
+{
+    if (line.isEmpty()) {
+        clearSpeech();
+        return;
+    }
+    m_personality.replyTo(line);
+    m_speechClear.start(4000);
+}
+
+void Backend::onWakeDetected(const QString &matched)
+{
+    m_pet.beginListen();
+    emit listeningChanged();
+    emit wakeWordStatusChanged();
+    // Wake → attentive, then a short line + talk chirp (Alive Companion).
+    m_personality.replyTo(matched.isEmpty() ? QStringLiteral("wake") : matched);
+    m_pet.talk();
+    setMessage({});
 }
 
 void Backend::setFollowCursor(bool enabled)

@@ -5,8 +5,8 @@
 
 // Boris is a small layer-shell window, not a fullscreen overlay. His body is
 // the whole window, so clicks anywhere else still reach the desktop. A hop
-// moves that window up; it does not leave a transparent pad that would eat
-// clicks. x is the distance from the left of his screen, y from the bottom.
+// moves that window up; talk and excited are separate moods (no shared "react").
+// x is the distance from the left of his screen, y from the bottom.
 // Pointer coordinates are in that same screen, with the origin at its top left.
 class Pet : public QObject {
     Q_OBJECT
@@ -28,9 +28,9 @@ class Pet : public QObject {
     Q_PROPERTY(qreal gazeX READ gazeX NOTIFY changed)
     Q_PROPERTY(qreal gazeY READ gazeY NOTIFY changed)
     Q_PROPERTY(bool napping READ napping NOTIFY changed)
+    Q_PROPERTY(bool listening READ listening NOTIFY changed)
 
 public:
-    // Body size at 100%. The settings window scales him from these.
     static constexpr int BodyWidth = 168;
     static constexpr int BodyHeight = 160;
     static constexpr int FloorReach = 64;
@@ -38,6 +38,7 @@ public:
     static constexpr int WalkSpeed = 90;
     static constexpr int HopHeight = 36;
     static constexpr int ReactMs = 520;
+    static constexpr int TalkMs = 900;
     static constexpr int NapAfterMs = 9000;
     static constexpr int PreenMs = 900;
 
@@ -51,6 +52,7 @@ public:
     int frame() const { return m_frame; }
     bool perched() const { return m_y > floorReach(); }
     bool napping() const { return m_mood == QLatin1String("nap"); }
+    bool listening() const { return m_listening; }
     bool pointerDown() const { return m_pointerDown; }
     bool hasStage() const { return m_hasStage; }
     int scalePercent() const { return m_scale; }
@@ -75,34 +77,42 @@ public:
     void startWalking(int targetX);
     void tick(int ms);
 
-    // Attention flags come from settings (Nala-style: follow / antics / sleep).
     void setAttention(bool followCursor, bool idleAntics, bool sleepWhenIdle);
-    // Screen-local pointer, origin top-left. Used for a glance while he walks.
     void noticePointer(int screenX, int screenY);
     void clearGaze();
 
-    // button is a Qt::MouseButton value. Right-click asks for the settings window.
     void press(int x, int y, int button);
     void updatePointer(int x, int y);
     void release();
 
-    Q_INVOKABLE void poke();
+    // Hop lifts him. Talk / excited do not share that hop animation.
+    Q_INVOKABLE void hop();
+    Q_INVOKABLE void talk();
+    Q_INVOKABLE void excite();
+    Q_INVOKABLE void poke(); // alias for hop (Space / older callers)
     Q_INVOKABLE void walkTheFloor();
+    Q_INVOKABLE void beginListen();
+    Q_INVOKABLE void endListen();
 
 signals:
     void changed();
     void settingsRequested();
+    void hopped();
+    void talked();
+    void excited();
 
 private:
     void clamp();
     void setMood(const QString &mood);
-    bool advanceReact(int ms);
+    bool advanceHop(int ms);
+    bool advanceTalk(int ms);
     bool advanceRoam(int ms);
     bool advanceFrame(int ms);
     bool advanceAttention(int ms);
     void chooseNextAct();
     bool canRoam() const;
     void wakeFromNap();
+    void finishAction();
 
     int m_stageWidth = 1280;
     int m_stageHeight = 720;
@@ -118,6 +128,7 @@ private:
     bool m_pointerDown = false;
     bool m_dragging = false;
     bool m_walking = false;
+    bool m_listening = false;
     int m_pressX = 0;
     int m_pressY = 0;
     int m_grabDx = 0;
@@ -126,6 +137,7 @@ private:
     int m_walkDebt = 0;
     int m_frameMs = 0;
     int m_reactLeft = 0;
+    int m_talkLeft = 0;
     int m_idleMs = 0;
     int m_preenLeft = 0;
     qreal m_gazeX = 0;

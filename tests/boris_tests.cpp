@@ -11,9 +11,11 @@
 #include "config.h"
 #include "cursor.h"
 #include "filepicker.h"
+#include "personality.h"
 #include "pet.h"
 #include "theme.h"
 #include "translator.h"
+#include "wakeword.h"
 
 class FakePicker : public FilePicker {
 public:
@@ -36,7 +38,7 @@ private slots:
         const int top = 600 - Pet::BodyHeight;
         pet.press(100, top, Qt::LeftButton);
         pet.release();
-        QCOMPARE(pet.mood(), QStringLiteral("react"));
+        QCOMPARE(pet.mood(), QStringLiteral("hop"));
         QCOMPARE(pet.x(), 100);
     }
 
@@ -46,6 +48,7 @@ private slots:
         pet.setStage(800, 600);
         pet.place(20, 0);
         pet.poke();
+        QCOMPARE(pet.mood(), QStringLiteral("hop"));
         pet.tick(260);
         QCOMPARE(pet.lift(), Pet::HopHeight);
         pet.tick(260);
@@ -62,7 +65,7 @@ private slots:
         pet.press(100, top, Qt::LeftButton);
         pet.updatePointer(103, top);
         pet.release();
-        QCOMPARE(pet.mood(), QStringLiteral("react"));
+        QCOMPARE(pet.mood(), QStringLiteral("hop"));
         QCOMPARE(pet.x(), 100);
 
         pet.place(100, 0);
@@ -483,6 +486,100 @@ private slots:
         QCOMPARE(translator.translate("Main", "%n clips", nullptr, 25), QStringLiteral("%n клипов"));
         QCOMPARE(Translator::pluralCategory(QStringLiteral("ar"), 11), QStringLiteral("many"));
         QCOMPARE(Translator::pluralCategory(QStringLiteral("ja"), 1), QStringLiteral("other"));
+    }
+
+    // --- Alive Companion (v0.2.0) ---
+
+    void hopAndTalkAreSeparateMoods()
+    {
+        Pet pet;
+        pet.setStage(800, 600);
+        pet.place(40, 0);
+
+        pet.hop();
+        QCOMPARE(pet.mood(), QStringLiteral("hop"));
+        pet.tick(260);
+        QVERIFY(pet.lift() > 0);
+
+        pet.talk();
+        QCOMPARE(pet.mood(), QStringLiteral("talk"));
+        QCOMPARE(pet.lift(), 0);
+        pet.tick(200);
+        QCOMPARE(pet.mood(), QStringLiteral("talk"));
+        QVERIFY(pet.lift() == 0);
+
+        pet.tick(Pet::TalkMs);
+        QCOMPARE(pet.mood(), QStringLiteral("idle"));
+    }
+
+    void chirpsEnabledPersists()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        Config config(dir.path());
+        QVERIFY(config.chirpsEnabled());
+        config.setChirpsEnabled(false);
+        Config again(dir.path());
+        QVERIFY(!again.chirpsEnabled());
+        again.setChirpsEnabled(true);
+        Config restored(dir.path());
+        QVERIFY(restored.chirpsEnabled());
+    }
+
+    void wakePhrasePersistsWithDefaultBoris()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        Config config(dir.path());
+        QCOMPARE(config.wakePhrase(), QStringLiteral("boris"));
+        config.setWakePhrase(QStringLiteral("hey captain"));
+        Config again(dir.path());
+        QCOMPARE(again.wakePhrase(), QStringLiteral("hey captain"));
+        again.setWakePhrase(QString());
+        QCOMPARE(again.wakePhrase(), QStringLiteral("boris"));
+        Config restored(dir.path());
+        QCOMPARE(restored.wakePhrase(), QStringLiteral("boris"));
+    }
+
+    void wakePhraseSubstringMatch()
+    {
+        // WakeWord::submitTranscript — pure string contains match, no mic.
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        WakeWord wake(dir.path());
+        QCOMPARE(wake.phrase(), QStringLiteral("boris"));
+        QVERIFY(wake.submitTranscript(QStringLiteral("hey boris")));
+        QVERIFY(wake.submitTranscript(QStringLiteral("BORIS wake up")));
+        QVERIFY(!wake.submitTranscript(QStringLiteral("hello")));
+        QVERIFY(!wake.submitTranscript(QStringLiteral("hey bird")));
+    }
+
+    void personalityPickLocalLineIsNonEmpty()
+    {
+        Personality personality;
+        for (int i = 0; i < 8; ++i) {
+            const QString line = personality.pickLocalLine();
+            QVERIFY(!line.trimmed().isEmpty());
+            QVERIFY(line.size() < 120);
+        }
+    }
+
+    void submitWakeLineDetectsPhraseWithoutNetwork()
+    {
+        QTemporaryDir dir;
+        QVERIFY(dir.isValid());
+        FakePicker picker;
+        Backend backend(dir.filePath(QStringLiteral("store")), &picker, dir.filePath(QStringLiteral("config")));
+        QCOMPARE(backend.wakePhrase(), QStringLiteral("boris"));
+        QVERIFY(!backend.pet()->listening());
+
+        backend.submitWakeLine(QStringLiteral("hello"));
+        QVERIFY(!backend.pet()->listening());
+        QVERIFY(!backend.message().isEmpty());
+
+        backend.submitWakeLine(QStringLiteral("hey boris"));
+        QVERIFY(backend.pet()->listening());
+        QCOMPARE(backend.pet()->mood(), QStringLiteral("sit"));
     }
 
 private:

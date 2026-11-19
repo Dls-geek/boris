@@ -373,7 +373,7 @@ Window {
                 width: parent.width
                 wrapMode: Text.WordWrap
                 visible: settings.shortcutBanner
-                text: qsTr("Space hops. Q quits. Escape closes this window.")
+                text: qsTr("Space hops. Q quits. Escape closes this window. Pet → Alive listens for his name on the mic.")
                 color: "#c5cad6"
                 font.pixelSize: 14
             }

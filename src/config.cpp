@@ -70,6 +70,61 @@ void Config::setSleepWhenIdle(bool enabled)
     emit attentionChanged();
 }
 
+void Config::setChirpsEnabled(bool enabled)
+{
+    if (m_chirpsEnabled == enabled)
+        return;
+    m_chirpsEnabled = enabled;
+    if (!save())
+        qWarning("Boris could not save his alive settings.");
+    emit aliveChanged();
+}
+
+void Config::setWakeWordEnabled(bool enabled)
+{
+    if (m_wakeWordEnabled == enabled)
+        return;
+    m_wakeWordEnabled = enabled;
+    if (!save())
+        qWarning("Boris could not save his alive settings.");
+    emit aliveChanged();
+}
+
+void Config::setWakePhrase(const QString &phrase)
+{
+    QString next = phrase.trimmed();
+    if (next.isEmpty())
+        next = QStringLiteral("boris");
+    if (next.size() > 40)
+        next = next.left(40).trimmed();
+    if (m_wakePhrase == next)
+        return;
+    m_wakePhrase = next;
+    if (!save())
+        qWarning("Boris could not save his alive settings.");
+    emit aliveChanged();
+}
+
+void Config::setReplyApiKey(const QString &key)
+{
+    if (m_replyApiKey == key)
+        return;
+    m_replyApiKey = key;
+    if (!save())
+        qWarning("Boris could not save his alive settings.");
+    emit aliveChanged();
+}
+
+void Config::setReplyApiUrl(const QString &url)
+{
+    if (m_replyApiUrl == url)
+        return;
+    m_replyApiUrl = url;
+    if (!save())
+        qWarning("Boris could not save his alive settings.");
+    emit aliveChanged();
+}
+
 bool Config::save() const
 {
     QJsonObject object;
@@ -77,6 +132,11 @@ bool Config::save() const
     object.insert(QStringLiteral("followCursor"), m_followCursor);
     object.insert(QStringLiteral("idleAntics"), m_idleAntics);
     object.insert(QStringLiteral("sleepWhenIdle"), m_sleepWhenIdle);
+    object.insert(QStringLiteral("chirpsEnabled"), m_chirpsEnabled);
+    object.insert(QStringLiteral("wakeWordEnabled"), m_wakeWordEnabled);
+    object.insert(QStringLiteral("wakePhrase"), m_wakePhrase);
+    object.insert(QStringLiteral("replyApiKey"), m_replyApiKey);
+    object.insert(QStringLiteral("replyApiUrl"), m_replyApiUrl);
     const QByteArray bytes = QJsonDocument(object).toJson(QJsonDocument::Compact);
     const QString temp = m_path + QStringLiteral(".tmp");
     QFile file(temp);
@@ -105,4 +165,19 @@ void Config::load()
         m_idleAntics = object.value(QStringLiteral("idleAntics")).toBool(true);
     if (object.contains(QStringLiteral("sleepWhenIdle")))
         m_sleepWhenIdle = object.value(QStringLiteral("sleepWhenIdle")).toBool(true);
+    if (object.contains(QStringLiteral("chirpsEnabled")))
+        m_chirpsEnabled = object.value(QStringLiteral("chirpsEnabled")).toBool(true);
+    if (object.contains(QStringLiteral("wakeWordEnabled")))
+        m_wakeWordEnabled = object.value(QStringLiteral("wakeWordEnabled")).toBool(false);
+    else if (object.contains(QStringLiteral("wakeMicEnabled")))
+        m_wakeWordEnabled = object.value(QStringLiteral("wakeMicEnabled")).toBool(false);
+    if (object.contains(QStringLiteral("wakePhrase"))) {
+        const QString phrase = object.value(QStringLiteral("wakePhrase")).toString().trimmed();
+        if (!phrase.isEmpty())
+            m_wakePhrase = phrase.left(40);
+    }
+    if (object.contains(QStringLiteral("replyApiKey")))
+        m_replyApiKey = object.value(QStringLiteral("replyApiKey")).toString();
+    if (object.contains(QStringLiteral("replyApiUrl")))
+        m_replyApiUrl = object.value(QStringLiteral("replyApiUrl")).toString();
 }

@@ -69,5 +69,19 @@
   "Parrot": "Papegøje",
   "Frames": "Billeder",
   "Custom picture": "Tilpasset billede",
-  "Untitled": "Unavngivet"
+  "Untitled": "Unavngivet",
+  "Call his name on the mic. Local only — nothing is sent to the cloud.": "Kald hans navn i mikrofonen. Kun lokalt — intet sendes til skyen.",
+  "Listen for his name": "Lyt efter hans navn",
+  "Wake name": "Vågenavn",
+  "boris": "boris",
+  "Heard you": "Hørte dig",
+  "Say the name…": "Sig navnet…",
+  "Teach his name once, then he listens.": "Lær ham navnet én gang, så lytter han.",
+  "Mic unavailable": "Mikrofon utilgængelig",
+  "Listening for %1…": "Lytter efter %1…",
+  "Mic off": "Mikrofon slået fra",
+  "Teach wake word": "Lær vågeord",
+  "Test wake word": "Test vågeord",
+  "Space hops. Q quits. Escape closes this window. Pet → Alive listens for his name on the mic.": "Space hopper. Q afslutter. Escape lukker dette vindue. Kæledyr → Alive lytter efter hans navn i mikrofonen.",
+  "Say his name (%1) to get his attention.": "Sig hans navn (%1) for at få hans opmærksomhed."
 }
